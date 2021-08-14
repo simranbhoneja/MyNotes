@@ -1,0 +1,6 @@
+{% for category, message in get_flashed_messages(with_categories=True) %}
+    <div class="alert alert-{{category}} alert-dismissible">
+        <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+        <strong>{{message}}</strong>
+    </div>
+{% endfor %}
