@@ -43,4 +43,5 @@ insert into folder (`id`, `name`) values
 update notes set deleted_at = null where id > 0;
 
 select * from users;
+drop table users;
 	
