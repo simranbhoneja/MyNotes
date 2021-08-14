@@ -41,4 +41,6 @@ insert into folder (`id`, `name`) values
 ('4', 'Web Development');
 
 update notes set deleted_at = null where id > 0;
+
+select * from users;
 	
