@@ -12,9 +12,10 @@
   <body>
     {% include 'includes/navbar.html' %}
     <div class="container">
-        {% block body_content %}
-            <h1> Empty </h1>
-        {% endblock body_content %}
+      {% include 'includes/messages.html' %}
+      {% block body_content %}
+          <h1> Empty </h1>
+      {% endblock body_content %}
     </div>
     <!-- Optional JavaScript -->
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
