@@ -1,8 +1,10 @@
 from enum import unique
 from os import name
 from flask import Flask, render_template, request, redirect
-from flask.helpers import url_for
+from flask.helpers import flash, url_for
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import session
+from werkzeug.security import generate_password_hash
 
 db_user = "root"
 db_pass = "3009"
@@ -11,20 +13,25 @@ db_name = "my_notes"
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "mysql://{}:{}@localhost/{}".format(db_user, db_pass, db_name)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
+app.config['SECRET_KEY'] = '4edf0cb5-0f76-4558-8562-0b0c8117afb5'
 
 db = SQLAlchemy(app)
 
 class Users(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
     username = db.Column(db.String(100), unique=True)
-    password = db.Column(db.String(100))
+    password = db.Column(db.String(256))
     name = db.Column(db.String(100))
 
     def __init__(self, username, password, name):
         self.username = username
         self.password = password
         self.name = name
+
+    @staticmethod
+    def exists(username) -> bool:
+        user = Users.query.filter_by(username = username).first()
+        return user !=None
 
     def __str__(self):
         return f"{self.username}"
@@ -39,10 +46,21 @@ def register():
         username = form.get('username', None)
         password = form.get('password', None)
         if (username and name and password):
-            user = Users(username, password, name)
-            db.session.add(user)
-            db.session.commit()
-        return redirect(url_for("login"))
+            if(not Users.exists(username)):
+                password = generate_password_hash(password)
+                user = Users(username, password, name)
+                db.session.add(user)
+                db.session.commit()
+                flash(f"{username} registered.\nLogin to proceed", "success")
+                return redirect(url_for("login"))
+            else:
+                flash(f"User with {username} already exists.", "danger")
+                return redirect(url_for("register"))
+        else:
+            flash(f"Please fill all required details", "warning")
+            return redirect(url_for("register"))
+            
+        
 
 @app.route("/login", methods=['GET', 'POST'])
 def login():
