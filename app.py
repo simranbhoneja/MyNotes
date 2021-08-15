@@ -1,10 +1,15 @@
+import uuid
+
+from datetime import datetime, timedelta
+from functools import wraps
+
 from enum import unique
 from os import name
-from flask import Flask, render_template, request, redirect
-from flask.helpers import flash, url_for
+from flask import Flask, render_template, request, redirect, flash, session, make_response
+from flask.helpers import url_for
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import session
 from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.wrappers import response
 
 db_user = "root"
 db_pass = "3009"
@@ -40,6 +45,67 @@ class Users(db.Model):
     def __str__(self):
         return f"{self.username}"
 
+
+class Token(db.Model):
+
+    EXPIRE_AFTER = timedelta(hours=24)
+
+    id = db.Column(db.Integer(), primary_key=True)
+    token = db.Column(db.String(256), unique=True, nullable=False)
+    expires_At = db.Column(db.DateTime(), nullable=False)
+    user_id = db.Column(db.Integer(), db.ForeignKey("users.id"), nullable=False)
+
+    def __init__(self, user_id, token, expires_at) -> None:
+        super().__init__()
+        self.user_id = user_id
+        self.token = token
+        self.expires_At = expires_at
+    
+    @staticmethod
+    def create_token(user_id):
+
+        token = Token(user_id, uuid.uuid4(), datetime.now() + timedelta(minutes=30))
+        db.session.add(token)
+        db.session.commit()
+
+        return token.token
+
+    @staticmethod
+    def is_valid(token):
+
+        token_db = Token.query.filter_by(token=token).first()
+        if token_db and token_db.expires_At > datetime.now():
+            return True
+        return False
+    
+    @staticmethod
+    def get_user_id_from_token(token):
+        token_db = Token.query.filter_by(token=token).first()
+        if token_db:
+            return token_db.user_id
+        return None
+
+
+def login_required(func):
+
+    @wraps(func)
+    def wrapper_func(*args, **kwargs):
+        if 'user' in session:
+            return func(*args, **kwargs)
+        if request.cookies.get('token'):
+            token = request.cookies.get('token')
+            if(Token.is_valid(token)):
+                user_id = Token.get_user_id_from_token(token)
+                if(user_id):
+                    session['user'] = user_id
+                    return func(*args, **kwargs)
+
+        flash("Please Login First", "warning")
+        return redirect(url_for('login'))
+    
+    return wrapper_func
+
+
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     if request.method == 'GET':
@@ -63,8 +129,7 @@ def register():
         else:
             flash(f"Please fill all required details", "warning")
             return redirect(url_for("register"))
-            
-        
+                 
 
 @app.route("/login", methods=['GET', 'POST'])
 def login():
@@ -78,8 +143,13 @@ def login():
         if(Users.exists(username)):
             user = Users.get_user_by_username(username)
             if(check_password_hash(user.password, password)):
+                session['user'] = user.id
                 flash("You are logged in", "success")
-                return redirect(url_for('index'))
+                response = make_response(redirect(url_for('index')))
+                if(form.get('remember_me', None)):
+                    token = Token.create_token(user.id)
+                    response.set_cookie('token', token, max_age= 60 * 30)
+                return response
             else:
                 flash("Incorrect Password", "info")
                 return redirect(url_for('login'))
@@ -88,7 +158,22 @@ def login():
             return redirect(url_for('login'))
 
 
+@app.route("/logout")
+@login_required
+def logout():
+    response = make_response(redirect(url_for('login')))
+    if 'user' in session:
+        user_id = session.pop('user')
+        response.set_cookie('token', '', max_age=-1)
+        db.session.execute("delete from token where user_id = :user_id", {"user_id": user_id})
+        db.session.commit()
+
+    flash("Logged out successfully", "success")
+    return response
+
+
 @app.route("/")
+@login_required
 def index():
     notes_sql = "Select * from notes where deleted_at is null"
     notes = db.session.execute(notes_sql)
@@ -97,8 +182,13 @@ def index():
     #     print(note)
     return render_template('index.html', notes = notes)
 
+
 @app.route("/create", methods=['GET', 'POST'])
+@login_required
 def create():
+    if not 'user' in session:
+        flash("Please Login First", "warning")
+        return redirect(url_for('login'))
 
     if request.method == 'GET':
         folders_sql = "Select * from folder"
@@ -121,7 +211,9 @@ def create():
         db.session.commit()
         return redirect(url_for('index'))
 
+
 @app.route("/update/<int:id>", methods=['GET', 'POST'])
+@login_required
 def update(id):
     if request.method == 'GET':
         folders_sql = "Select * from folder"
@@ -150,8 +242,10 @@ def update(id):
         db.session.commit()
         return redirect(url_for('index'))
 
+
 @app.route("/delete", methods=['POST'])
-def delete(id):
+@login_required
+def delete():
     if request.method == 'POST':
         try:
             id = request.form.get('id', None)
@@ -164,6 +258,7 @@ def delete(id):
             return redirect(url_for('error', code=404))
         return redirect(url_for('index'))
 
+
 @app.route("/error/<code>")
 def error(code):
     codes = {
@@ -171,9 +266,11 @@ def error(code):
     }
     return render_template("error.html", message = codes.get(code, "Invalid Request"))
 
+
 @app.route("/thrash")
 def thrash():
     pass
+
 
 if __name__ == "__main__":
     db.create_all()
