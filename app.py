@@ -4,7 +4,7 @@ from flask import Flask, render_template, request, redirect
 from flask.helpers import flash, url_for
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import session
-from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 db_user = "root"
 db_pass = "3009"
@@ -30,8 +30,12 @@ class Users(db.Model):
 
     @staticmethod
     def exists(username) -> bool:
-        user = Users.query.filter_by(username = username).first()
+        user = Users.get_user_by_username(username)
         return user !=None
+
+    @staticmethod
+    def get_user_by_username(username):
+        return Users.query.filter_by(username = username).first()
 
     def __str__(self):
         return f"{self.username}"
@@ -64,7 +68,25 @@ def register():
 
 @app.route("/login", methods=['GET', 'POST'])
 def login():
-    return render_template('login.html')
+    if request.method == 'GET':
+        return render_template('login.html')
+    
+    if request.method == 'POST':
+        form = request.form
+        username = form.get('username', None)
+        password = form.get('password', None)
+        if(Users.exists(username)):
+            user = Users.get_user_by_username(username)
+            if(check_password_hash(user.password, password)):
+                flash("You are logged in", "success")
+                return redirect(url_for('index'))
+            else:
+                flash("Incorrect Password", "info")
+                return redirect(url_for('login'))
+        else:
+            flash("Incorrect user credentials", "info")
+            return redirect(url_for('login'))
+
 
 @app.route("/")
 def index():
