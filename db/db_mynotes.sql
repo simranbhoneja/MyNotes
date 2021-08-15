@@ -40,6 +40,9 @@ insert into folder (`id`, `name`) values
 ('3', 'Python'),
 ('4', 'Web Development');
 
+insert into folder (`id`, `name`) values
+('5', 'FLASK');
+
 update notes set deleted_at = null where id > 0;
 
 select * from users;
