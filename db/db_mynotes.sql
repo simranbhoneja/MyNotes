@@ -47,4 +47,15 @@ update notes set deleted_at = null where id > 0;
 
 select * from users;
 drop table users;
+
+alter table notes
+add user_id int not null default 3;
+
+update notes set user_id = 1 where id > 0;
+
+alter table notes
+add constraint FK_notes_user
+foreign key (user_id) references users(id);
+
+select * from notes;
 	
