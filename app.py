@@ -10,6 +10,8 @@ from flask.helpers import url_for
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.wrappers import response
+# pip install flask_wtf
+from flask_wtf import CSRFProtect
 
 db_user = "root"
 db_pass = "3009"
@@ -21,6 +23,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = '4edf0cb5-0f76-4558-8562-0b0c8117afb5'
 
 db = SQLAlchemy(app)
+csrf = CSRFProtect()
+csrf.init_app(app)
 
 class Users(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
@@ -175,7 +179,8 @@ def logout():
 @app.route("/")
 @login_required
 def index():
-    notes_sql = "Select * from notes where deleted_at is null"
+    user_id = session.get('user', None)
+    notes_sql = f"Select * from notes where deleted_at is null and user_id = {user_id}"
     notes = db.session.execute(notes_sql)
     # print(type(notes))
     # for note in notes:
@@ -195,17 +200,18 @@ def create():
         folders = db.session.execute(folders_sql)
         return render_template('create.html', folders = folders)
     elif request.method == 'POST':
-
+        user_id = session.get('user', None)
         form = request.form
         params = {
             "title" : form['title'],
             "content" : form.get('title', ''),
             "folder_id" : form.get('folder_id', ''),
+            "user_id" : user_id,
         }
         if not params['folder_id']:
             params['folder_id'] = None
         
-        sql = f"insert into notes (`title`, `content`, `folder_id`) values(:title, :content, :folder_id)"
+        sql = f"insert into notes (`title`, `content`, `folder_id`, `user_id`) values(:title, :content, :folder_id, :user_id)"
         
         db.session.execute(sql, params)
         db.session.commit()
@@ -215,14 +221,20 @@ def create():
 @app.route("/update/<int:id>", methods=['GET', 'POST'])
 @login_required
 def update(id):
+    note_sql = "Select * from notes where id= :id and deleted_at is null"
+    note = db.session.execute(note_sql, {"id":id}).fetchone()
+        
+    if not note:
+        return redirect(url_for('error', code=404))
+
+    user_id = session.get('user', None)
+    if note.user_id != user_id:
+        return redirect(url_for('error', code=403))
+
     if request.method == 'GET':
         folders_sql = "Select * from folder"
         folders = db.session.execute(folders_sql)
-        note_sql = "Select * from notes where id= :id and deleted_at is null"
-        note = db.session.execute(note_sql, {"id":id}).fetchone()
         
-        if not note:
-            return redirect(url_for('error', code=404))
         return render_template('update.html', folders = folders, note = note)
     
     elif request.method == 'POST':
@@ -251,9 +263,20 @@ def delete():
             id = request.form.get('id', None)
             if not id:
                 return redirect('error', code=404)
+
+            user_id = session.get('user', None)
+            note_sql = "Select * from notes where id= :id and deleted_at is null"
+            note = db.session.execute(note_sql, {"id":id}.fetchone())
+            
+            if not note:
+                return redirect(url_for('error', code=404))
+            if note.user_id != user_id:
+                return redirect(url_for('error', code=403))
+
             sql = f"update notes set deleted_at = now() where id=:id"
             db.session.execute(sql, {"id": id})
             db.session.commit()
+
         except (Exception):
             return redirect(url_for('error', code=404))
         return redirect(url_for('index'))
@@ -262,6 +285,7 @@ def delete():
 @app.route("/error/<code>")
 def error(code):
     codes = {
+        "403": "403 Forbidden",
         "404": "404 Not Found",
     }
     return render_template("error.html", message = codes.get(code, "Invalid Request"))
